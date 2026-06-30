@@ -1,0 +1,521 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Eye-Health Analytics — Interactive Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet" />
+<link href="https://cdnjs.cloudflare.com/ajax/libs/noUiSlider/15.7.1/nouislider.min.css" rel="stylesheet" />
+<script src="https://cdn.plot.ly/plotly-2.35.2.min.js" charset="utf-8"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/noUiSlider/15.7.1/nouislider.min.js"></script>
+<style>
+  :root{
+    --ink:#0f2a30; --muted:#52696f; --faint:#7e9298;
+    --teal:#0d9488; --teal-d:#115e59; --teal-l:#5eead4;
+    --coral:#ef6f53; --amber:#f4a259;
+    --paper:#eef4f3; --card:#ffffff; --line:#dde8e6;
+    --g0:#7fd9cb; --g1:#34b8a6; --g2:#0d9488; --g3:#0b5d57;
+    --shadow:0 1px 2px rgba(15,42,48,.04), 0 8px 24px rgba(15,42,48,.06);
+    --radius:16px;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0}
+  body{
+    font-family:"Inter",system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
+    background:
+      radial-gradient(1200px 500px at 80% -10%, #d9efea 0%, transparent 60%),
+      var(--paper);
+    color:var(--ink); -webkit-font-smoothing:antialiased; line-height:1.45;
+  }
+  .wrap{max-width:1320px;margin:0 auto;padding:22px 22px 60px}
+
+  /* ---------- header ---------- */
+  header.top{display:flex;align-items:flex-start;justify-content:space-between;gap:20px;flex-wrap:wrap;margin-bottom:18px}
+  .brand{display:flex;align-items:center;gap:14px}
+  .logo{width:46px;height:46px;border-radius:13px;background:linear-gradient(140deg,var(--teal),var(--teal-d));
+    display:grid;place-items:center;box-shadow:var(--shadow)}
+  .logo svg{width:26px;height:26px}
+  h1{font-family:"Space Grotesk",sans-serif;font-size:23px;margin:0;letter-spacing:-.4px}
+  .sub{color:var(--muted);font-size:13px;margin-top:2px}
+  .note{font-size:11.5px;color:var(--faint);max-width:360px;text-align:right;line-height:1.5}
+
+  /* ---------- kpis ---------- */
+  .kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:16px}
+  .kpi{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:15px 17px;box-shadow:var(--shadow)}
+  .kpi .lab{font-size:11.5px;text-transform:uppercase;letter-spacing:.7px;color:var(--faint);font-weight:600}
+  .kpi .val{font-family:"Space Grotesk",sans-serif;font-size:30px;font-weight:700;margin-top:4px;font-variant-numeric:tabular-nums;letter-spacing:-.5px}
+  .kpi .val small{font-size:14px;color:var(--faint);font-weight:600}
+  .kpi .hint{font-size:11.5px;color:var(--muted);margin-top:3px}
+
+  /* ---------- filter bar ---------- */
+  .filters{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:16px 20px;box-shadow:var(--shadow);
+    display:grid;grid-template-columns:1.1fr 1.1fr 1.5fr auto;gap:26px;align-items:center;margin-bottom:16px}
+  .fgroup label{font-size:11.5px;text-transform:uppercase;letter-spacing:.6px;color:var(--faint);font-weight:700;display:flex;justify-content:space-between;margin-bottom:14px}
+  .fgroup label span{color:var(--teal-d);font-weight:700}
+  .slider{height:6px}
+  .chips{display:flex;gap:8px;flex-wrap:wrap}
+  .chip{border:1.5px solid var(--line);background:#fff;border-radius:999px;padding:7px 13px;font-size:12.5px;font-weight:600;color:var(--muted);cursor:pointer;
+    display:flex;align-items:center;gap:7px;transition:all .15s;user-select:none}
+  .chip .dot{width:10px;height:10px;border-radius:50%}
+  .chip.on{color:#fff;border-color:transparent}
+  .chip.on.g0{background:var(--g0);color:var(--teal-d)} .chip.on.g1{background:var(--g1)}
+  .chip.on.g2{background:var(--g2)} .chip.on.g3{background:var(--g3)}
+  .chip:not(.on){opacity:.55}
+  .reset{align-self:end;border:1.5px solid var(--line);background:#fff;color:var(--muted);border-radius:10px;padding:9px 15px;font-weight:600;font-size:13px;cursor:pointer;transition:all .15s}
+  .reset:hover{border-color:var(--coral);color:var(--coral)}
+
+  /* ---------- grid ---------- */
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:16px 18px 8px;min-width:0}
+  .card.full{grid-column:1 / -1}
+  .chead{display:flex;justify-content:space-between;align-items:baseline;gap:12px;margin-bottom:2px}
+  .ctitle{font-family:"Space Grotesk",sans-serif;font-size:15.5px;font-weight:600}
+  .cdesc{font-size:12px;color:var(--muted);margin-top:1px}
+  .ctag{font-size:10.5px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:var(--teal-d);background:#e2f1ee;border:1px solid #cfe7e2;padding:3px 9px;border-radius:999px;white-space:nowrap}
+  .plot{width:100%;height:330px}
+  .plot.tall{height:380px}
+
+  /* ---------- drill table ---------- */
+  .drillhead{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:8px}
+  .drillstate{font-size:12.5px;color:var(--muted)}
+  .drillstate b{color:var(--ink)}
+  .tablewrap{max-height:240px;overflow:auto;border:1px solid var(--line);border-radius:10px}
+  table{border-collapse:collapse;width:100%;font-size:12.5px}
+  thead th{position:sticky;top:0;background:#f3f8f7;color:var(--muted);text-align:right;font-weight:700;padding:8px 12px;border-bottom:1px solid var(--line);white-space:nowrap}
+  thead th:first-child{text-align:left}
+  tbody td{padding:7px 12px;text-align:right;border-bottom:1px solid #eef3f2;font-variant-numeric:tabular-nums}
+  tbody td:first-child{text-align:left;color:var(--faint)}
+  tbody tr:hover{background:#f6fbfa}
+  .pill{display:inline-block;min-width:20px;text-align:center;border-radius:6px;padding:1px 7px;font-weight:700;color:#fff;font-size:11.5px}
+  .clearsel{border:1.5px solid var(--line);background:#fff;color:var(--muted);border-radius:8px;padding:6px 11px;font-weight:600;font-size:12px;cursor:pointer}
+  .clearsel:hover{border-color:var(--coral);color:var(--coral)}
+
+  .empty{display:none;padding:40px;text-align:center;color:var(--faint);font-size:14px}
+  footer{margin-top:26px;color:var(--faint);font-size:11.5px;text-align:center;line-height:1.6}
+  @media(max-width:900px){.kpis{grid-template-columns:repeat(2,1fr)}.filters{grid-template-columns:1fr}.grid{grid-template-columns:1fr}.note{text-align:left}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="top">
+    <div class="brand">
+      <div class="logo">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12z"/><circle cx="12" cy="12" r="3"/>
+        </svg>
+      </div>
+      <div>
+        <h1>Eye-Health Analytics</h1>
+        <div class="sub">Lifestyle, screen habits &amp; vision across 10,000 respondents · interactive exploration</div>
+      </div>
+    </div>
+    <div class="note">
+      Filters &amp; charts were adapted to the fields that exist in this dataset — it carries
+      <b>no date or geographic column</b>, so a date-range slider and geospatial map are replaced
+      by age / screen-time ranges and a correlation heatmap.
+    </div>
+  </header>
+
+  <!-- KPIs -->
+  <section class="kpis">
+    <div class="kpi"><div class="lab">Respondents</div><div class="val" id="kRows">–</div><div class="hint" id="kRowsHint">of 10,000 in view</div></div>
+    <div class="kpi"><div class="lab">Avg eye-health</div><div class="val" id="kEye">–<small> /100</small></div><div class="hint" id="kEyeHint">mean score</div></div>
+    <div class="kpi"><div class="lab">Avg screen time</div><div class="val" id="kScreen">–<small> hrs</small></div><div class="hint">per day</div></div>
+    <div class="kpi"><div class="lab">Wear glasses</div><div class="val" id="kGlasses">–<small>%</small></div><div class="hint">prescription level ≥ 1</div></div>
+  </section>
+
+  <!-- FILTERS -->
+  <section class="filters">
+    <div class="fgroup">
+      <label>Age range <span id="ageVal">5–80</span></label>
+      <div id="ageSlider" class="slider"></div>
+    </div>
+    <div class="fgroup">
+      <label>Screen time (hrs/day) <span id="screenVal">0–16</span></label>
+      <div id="screenSlider" class="slider"></div>
+    </div>
+    <div class="fgroup">
+      <label>Glasses prescription level</label>
+      <div class="chips" id="glassesChips">
+        <div class="chip on g0" data-g="0"><span class="dot" style="background:var(--g0)"></span>0 · none</div>
+        <div class="chip on g1" data-g="1"><span class="dot" style="background:var(--g1)"></span>1 · reading</div>
+        <div class="chip on g2" data-g="2"><span class="dot" style="background:var(--g2)"></span>2 · daily</div>
+        <div class="chip on g3" data-g="3"><span class="dot" style="background:var(--g3)"></span>3 · strong</div>
+      </div>
+    </div>
+    <button class="reset" id="resetBtn">↻ Reset</button>
+  </section>
+
+  <div class="empty" id="emptyState">No respondents match the current filters. Try widening the age or screen-time range.</div>
+
+  <!-- CHARTS -->
+  <section class="grid" id="chartGrid">
+    <div class="card">
+      <div class="chead">
+        <div><div class="ctitle">Correlation heatmap</div><div class="cdesc">Pearson r between every variable — <b>click any cell</b> to load that pair into the scatter ↓</div></div>
+        <div class="ctag">Drill ▸ scatter</div>
+      </div>
+      <div id="heatmap" class="plot tall"></div>
+    </div>
+
+    <div class="card">
+      <div class="chead">
+        <div><div class="ctitle" id="scatterTitle">Screen time vs Eye-health</div><div class="cdesc">Coloured by glasses level · <b>box / lasso-select</b> points to drill into the detail table ↓</div></div>
+        <div class="ctag">Scatter</div>
+      </div>
+      <div id="scatter" class="plot tall"></div>
+    </div>
+
+    <div class="card">
+      <div class="chead">
+        <div><div class="ctitle">Eye-health &amp; glasses need across age</div><div class="cdesc">Dual-axis — with age, vision declines (left) while prescriptions strengthen (right)</div></div>
+        <div class="ctag">Dual-axis line</div>
+      </div>
+      <div id="dual" class="plot"></div>
+    </div>
+
+    <div class="card">
+      <div class="chead">
+        <div><div class="ctitle">Distribution of eye-health scores</div><div class="cdesc">Histogram of the current selection with the mean marked</div></div>
+        <div class="ctag">Distribution</div>
+      </div>
+      <div id="hist" class="plot"></div>
+    </div>
+
+    <div class="card">
+      <div class="chead">
+        <div><div class="ctitle">Average eye-health by glasses level</div><div class="cdesc"><b>Click a bar</b> to drill the whole dashboard down to that group</div></div>
+        <div class="ctag">Bar · drill</div>
+      </div>
+      <div id="bar" class="plot"></div>
+    </div>
+
+    <div class="card">
+      <div class="drillhead">
+        <div>
+          <div class="ctitle">Drill-through detail</div>
+          <div class="drillstate" id="drillState">Sample of filtered respondents</div>
+        </div>
+        <button class="clearsel" id="clearSel" style="display:none">Clear selection</button>
+      </div>
+      <div class="tablewrap">
+        <table id="drillTable">
+          <thead><tr>
+            <th>ID</th><th>Age</th><th>Screen hrs</th><th>Brightness</th><th>Distance cm</th>
+            <th>Outdoor hrs</th><th>Exercise hrs</th><th>Glasses</th><th>Eye-health</th>
+          </tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    Source: <b>eye_score_cleaned.xlsx</b> · 10,000 records, 11 attributes, 0 missing / 0 duplicates.
+    Correlations are Pearson and recompute live with your filters. Eye-health score is a 0–100 composite.
+  </footer>
+</div>
+
+<script src="data.js"></script>
+<script>
+/* ============================ data ============================ */
+const D = window.EYE_DATA;
+const N = D.id.length;
+const GCOL = {0:'#7fd9cb',1:'#34b8a6',2:'#0d9488',3:'#0b5d57'};
+const GNAME = {0:'none',1:'reading',2:'daily',3:'strong'};
+
+const VARS = ['exercise_hours','mental_health_score','screen_time_hours','screen_brightness_avg',
+  'age','height_cm','outdoor_light_exposure_hours','night_mode_usage','screen_distance_cm',
+  'glasses_number','eye_health_score'];
+const LABEL = {
+  exercise_hours:'Exercise (hrs)', mental_health_score:'Mental health', screen_time_hours:'Screen time (hrs)',
+  screen_brightness_avg:'Screen brightness', age:'Age', height_cm:'Height (cm)',
+  outdoor_light_exposure_hours:'Outdoor light (hrs)', night_mode_usage:'Night mode %',
+  screen_distance_cm:'Screen distance (cm)', glasses_number:'Glasses level', eye_health_score:'Eye-health score'
+};
+
+const FONT = {family:'Inter, sans-serif', color:'#0f2a30', size:12};
+const PLOT_CFG = {displayModeBar:false, responsive:true};
+const baseLayout = () => ({
+  font:FONT, paper_bgcolor:'rgba(0,0,0,0)', plot_bgcolor:'rgba(0,0,0,0)',
+  margin:{l:54,r:18,t:10,b:42}, hoverlabel:{bgcolor:'#0f2a30', font:{color:'#fff',family:'Inter'}, bordercolor:'#0f2a30'},
+  xaxis:{gridcolor:'#eaf1f0', zeroline:false, automargin:true},
+  yaxis:{gridcolor:'#eaf1f0', zeroline:false, automargin:true}
+});
+
+/* ============================ state ============================ */
+const state = {
+  age:[5,80], screen:[0,16], glasses:new Set([0,1,2,3]),
+  scatterX:'screen_time_hours', scatterY:'eye_health_score', selectedIds:null
+};
+
+function filteredIdx(useGlasses=true){
+  const idx=[]; const A=D.age, S=D.screen_time_hours, G=D.glasses_number;
+  const [a0,a1]=state.age, [s0,s1]=state.screen;
+  for(let i=0;i<N;i++){
+    if(A[i]<a0||A[i]>a1) continue;
+    if(S[i]<s0||S[i]>s1) continue;
+    if(useGlasses && !state.glasses.has(G[i])) continue;
+    idx.push(i);
+  }
+  return idx;
+}
+const mean = (col,idx)=>{ if(!idx.length) return NaN; let s=0; for(const i of idx) s+=col[i]; return s/idx.length; };
+function pearson(a,b,idx){
+  const n=idx.length; if(n<3) return NaN;
+  let sa=0,sb=0; for(const i of idx){sa+=a[i];sb+=b[i];}
+  const ma=sa/n, mb=sb/n; let num=0,da=0,db=0;
+  for(const i of idx){const x=a[i]-ma,y=b[i]-mb; num+=x*y; da+=x*x; db+=y*y;}
+  if(da===0||db===0) return NaN;
+  return num/Math.sqrt(da*db);
+}
+
+/* ============================ KPIs ============================ */
+function renderKPIs(idx){
+  document.getElementById('kRows').textContent = idx.length.toLocaleString();
+  document.getElementById('kRowsHint').textContent = (100*idx.length/N).toFixed(0)+'% of 10,000 in view';
+  const eye = mean(D.eye_health_score, idx);
+  document.getElementById('kEye').innerHTML = (idx.length? eye.toFixed(1):'–')+'<small> /100</small>';
+  document.getElementById('kScreen').innerHTML = (idx.length? mean(D.screen_time_hours,idx).toFixed(1):'–')+'<small> hrs</small>';
+  let gl=0; for(const i of idx) if(D.glasses_number[i]>0) gl++;
+  document.getElementById('kGlasses').innerHTML = (idx.length? Math.round(100*gl/idx.length):'–')+'<small>%</small>';
+}
+
+/* ============================ heatmap ============================ */
+function renderHeatmap(idx){
+  const z=[], txt=[];
+  for(let r=0;r<VARS.length;r++){
+    const row=[], trow=[];
+    for(let c=0;c<VARS.length;c++){
+      const v = pearson(D[VARS[r]], D[VARS[c]], idx);
+      row.push(v); trow.push(isNaN(v)?'':v.toFixed(2));
+    }
+    z.push(row); txt.push(trow);
+  }
+  const labels = VARS.map(v=>LABEL[v]);
+  const data=[{
+    type:'heatmap', z, x:labels, y:labels, text:txt, texttemplate:'%{text}',
+    textfont:{size:9.5, color:'#274046'}, xgap:2, ygap:2, zmid:0, zmin:-1, zmax:1,
+    colorscale:[[0,'#ef6f53'],[0.25,'#f4b59f'],[0.5,'#f3f7f6'],[0.75,'#86cfc5'],[1,'#0d9488']],
+    colorbar:{title:{text:'r',side:'right'}, thickness:10, len:.7, tickfont:{size:10}, outlinewidth:0},
+    hovertemplate:'%{y}  ×  %{x}<br>r = %{z:.3f}<extra></extra>'
+  }];
+  const lay=baseLayout();
+  lay.margin={l:118,r:10,t:6,b:118};
+  lay.xaxis={tickangle:-45, tickfont:{size:10}, automargin:true};
+  lay.yaxis={tickfont:{size:10}, autorange:'reversed', automargin:true};
+  Plotly.react('heatmap', data, lay, PLOT_CFG);
+  const hm=document.getElementById('heatmap');
+  hm.removeAllListeners && hm.removeAllListeners('plotly_click');
+  hm.on('plotly_click', e=>{
+    const p=e.points[0];
+    const xv=VARS[labels.indexOf(p.x)], yv=VARS[labels.indexOf(p.y)];
+    if(xv===yv) return;
+    state.scatterX=xv; state.scatterY=yv;
+    renderScatter(filteredIdx());
+  });
+}
+
+/* ============================ scatter ============================ */
+function renderScatter(idx){
+  const xc=D[state.scatterX], yc=D[state.scatterY];
+  document.getElementById('scatterTitle').textContent = LABEL[state.scatterX]+' vs '+LABEL[state.scatterY];
+  const traces=[];
+  for(const g of [0,1,2,3]){
+    if(!state.glasses.has(g)) continue;
+    const xs=[],ys=[],cd=[];
+    for(const i of idx){ if(D.glasses_number[i]!==g) continue;
+      xs.push(xc[i]); ys.push(yc[i]); cd.push([D.id[i],D.age[i],g]); }
+    traces.push({
+      type:'scattergl', mode:'markers', name:'glasses '+g+' · '+GNAME[g],
+      x:xs, y:ys, customdata:cd,
+      marker:{color:GCOL[g], size:5, opacity:.5, line:{width:0}},
+      hovertemplate:'<b>ID %{customdata[0]}</b> · age %{customdata[1]} · glasses %{customdata[2]}<br>'+
+        LABEL[state.scatterX]+': %{x}<br>'+LABEL[state.scatterY]+': %{y}<extra></extra>'
+    });
+  }
+  const lay=baseLayout();
+  lay.margin={l:56,r:14,t:8,b:46};
+  lay.xaxis={...lay.xaxis, title:{text:LABEL[state.scatterX], font:{size:12}}};
+  lay.yaxis={...lay.yaxis, title:{text:LABEL[state.scatterY], font:{size:12}}};
+  lay.legend={orientation:'h', y:1.12, x:0, font:{size:10.5}};
+  lay.dragmode='select';
+  Plotly.react('scatter', traces, lay, PLOT_CFG);
+  const sc=document.getElementById('scatter');
+  sc.removeAllListeners && sc.removeAllListeners('plotly_selected');
+  sc.on('plotly_selected', e=>{
+    if(!e || !e.points || !e.points.length){ return; }
+    const ids=e.points.map(p=>p.customdata[0]);
+    state.selectedIds=new Set(ids);
+    renderDrill();
+  });
+}
+
+/* ============================ dual-axis line ============================ */
+function renderDual(idx){
+  // Binned by AGE — the one axis where both series vary strongly and monotonically:
+  // eye-health falls (r=-0.49 with age) while prescription strength rises (r=+0.37 with age).
+  const edges=[5,20,30,40,50,60,70,81];
+  const labels=['5–19','20–29','30–39','40–49','50–59','60–69','70–80'];
+  const sumE=Array(labels.length).fill(0), sumG=Array(labels.length).fill(0), cnt=Array(labels.length).fill(0);
+  for(const i of idx){
+    const a=D.age[i]; let b=-1;
+    for(let e=0;e<labels.length;e++){ if(a>=edges[e]&&a<edges[e+1]){b=e;break;} }
+    if(b<0) continue;
+    sumE[b]+=D.eye_health_score[i]; sumG[b]+=D.glasses_number[i]; cnt[b]++;
+  }
+  const eye=[],gl=[],xl=[],cc=[];
+  for(let e=0;e<labels.length;e++){ if(cnt[e]<5) continue; xl.push(labels[e]); eye.push(sumE[e]/cnt[e]); gl.push(sumG[e]/cnt[e]); cc.push(cnt[e]); }
+  const t1={type:'scatter', mode:'lines+markers', name:'Eye-health (left)', x:xl, y:eye,
+    line:{color:'#0d9488',width:3}, marker:{size:7,color:'#0d9488'}, customdata:cc,
+    hovertemplate:'Age %{x}<br>Eye-health: %{y:.1f}<br>n = %{customdata}<extra></extra>'};
+  const t2={type:'scatter', mode:'lines+markers', name:'Glasses level (right)', x:xl, y:gl, yaxis:'y2',
+    line:{color:'#ef6f53',width:3,dash:'dot'}, marker:{size:7,color:'#ef6f53'},
+    hovertemplate:'Age %{x}<br>Mean glasses level: %{y:.2f}<extra></extra>'};
+  const lay=baseLayout();
+  lay.margin={l:52,r:54,t:8,b:42};
+  lay.xaxis={...lay.xaxis, title:{text:'Age band', font:{size:12}}};
+  lay.yaxis={...lay.yaxis, title:{text:'Eye-health', font:{size:11,color:'#0d9488'}}, tickfont:{color:'#0d9488'}};
+  lay.yaxis2={overlaying:'y', side:'right', title:{text:'Glasses level (0–3)', font:{size:11,color:'#ef6f53'}},
+    tickfont:{color:'#ef6f53'}, gridcolor:'rgba(0,0,0,0)', zeroline:false, range:[0,3]};
+  lay.legend={orientation:'h', y:1.14, x:0, font:{size:10.5}};
+  Plotly.react('dual',[t1,t2],lay,PLOT_CFG);
+}
+
+/* ============================ histogram ============================ */
+function renderHist(idx){
+  const vals=idx.map(i=>D.eye_health_score[i]);
+  const m=mean(D.eye_health_score, idx);
+  const data=[{type:'histogram', x:vals, nbinsx:34, marker:{color:'#0d9488', line:{color:'#fff',width:.5}},
+    opacity:.92, hovertemplate:'Score %{x}<br>%{y} respondents<extra></extra>'}];
+  const lay=baseLayout();
+  lay.margin={l:50,r:14,t:8,b:42};
+  lay.xaxis={...lay.xaxis, title:{text:'Eye-health score', font:{size:12}}, range:[20,100]};
+  lay.yaxis={...lay.yaxis, title:{text:'Respondents', font:{size:12}}};
+  lay.bargap=.03;
+  if(!isNaN(m)){
+    lay.shapes=[{type:'line', x0:m,x1:m, yref:'paper', y0:0,y1:1, line:{color:'#ef6f53',width:2.4,dash:'dash'}}];
+    lay.annotations=[{x:m, yref:'paper', y:1.0, text:'mean '+m.toFixed(1), showarrow:false,
+      font:{color:'#ef6f53',size:11,family:'Inter'}, bgcolor:'#fff', bordercolor:'#f4cabf', borderpad:2, xshift:2, yshift:-2}];
+  }
+  Plotly.react('hist', data, lay, PLOT_CFG);
+}
+
+/* ============================ bar (drill) ============================ */
+function renderBar(){
+  const idxNoG=filteredIdx(false);
+  const sums=[0,0,0,0], cnt=[0,0,0,0];
+  for(const i of idxNoG){ const g=D.glasses_number[i]; sums[g]+=D.eye_health_score[i]; cnt[g]++; }
+  const x=['0 · none','1 · reading','2 · daily','3 · strong'];
+  const y=[0,1,2,3].map(g=>cnt[g]?sums[g]/cnt[g]:0);
+  const colors=[0,1,2,3].map(g=> state.glasses.has(g)? GCOL[g] : '#d7e4e1');
+  const data=[{type:'bar', x, y, marker:{color:colors}, customdata:cnt,
+    text:y.map(v=>v?v.toFixed(1):''), textposition:'outside', textfont:{size:11,color:'#0f2a30'},
+    hovertemplate:'%{x}<br>Mean eye-health: %{y:.1f}<br>n = %{customdata}<extra></extra>'}];
+  const lay=baseLayout();
+  lay.margin={l:50,r:14,t:18,b:38};
+  lay.xaxis={...lay.xaxis, title:{text:'Glasses prescription level', font:{size:12}}};
+  lay.yaxis={...lay.yaxis, title:{text:'Mean eye-health', font:{size:12}}, range:[0, Math.max(...y)*1.16||80]};
+  Plotly.react('bar', data, lay, PLOT_CFG);
+  const b=document.getElementById('bar');
+  b.removeAllListeners && b.removeAllListeners('plotly_click');
+  b.on('plotly_click', e=>{
+    const g=e.points[0].pointIndex;
+    // drill: isolate to this glasses group (or restore all if already isolated to it)
+    if(state.glasses.size===1 && state.glasses.has(g)) state.glasses=new Set([0,1,2,3]);
+    else state.glasses=new Set([g]);
+    syncChips(); refresh();
+  });
+}
+
+/* ============================ drill table ============================ */
+function fmtGlasses(g){return '<span class="pill" style="background:'+GCOL[g]+(g===0?';color:#0b5d57':'')+'">'+g+'</span>';}
+function renderDrill(){
+  const tb=document.querySelector('#drillTable tbody');
+  let idx, selMode=false;
+  if(state.selectedIds && state.selectedIds.size){
+    const want=state.selectedIds; idx=[];
+    for(let i=0;i<N;i++) if(want.has(D.id[i])) idx.push(i);
+    selMode=true;
+  } else {
+    idx=filteredIdx();
+  }
+  document.getElementById('clearSel').style.display = selMode? 'block':'none';
+  document.getElementById('drillState').innerHTML = selMode
+    ? 'Showing <b>'+idx.length+'</b> selected respondents from the scatter'
+    : 'Sample of <b>'+idx.length.toLocaleString()+'</b> filtered respondents (first 60)';
+  const rows = selMode? idx : idx.slice(0,60);
+  let html='';
+  for(const i of rows){
+    html+='<tr><td>'+D.id[i]+'</td><td>'+D.age[i]+'</td><td>'+D.screen_time_hours[i]+'</td><td>'+
+      D.screen_brightness_avg[i]+'</td><td>'+D.screen_distance_cm[i]+'</td><td>'+
+      D.outdoor_light_exposure_hours[i]+'</td><td>'+D.exercise_hours[i]+'</td><td>'+
+      fmtGlasses(D.glasses_number[i])+'</td><td><b>'+D.eye_health_score[i]+'</b></td></tr>';
+  }
+  tb.innerHTML = html || '<tr><td colspan="9" style="text-align:center;color:#9fb0b0;padding:24px">No rows</td></tr>';
+}
+
+/* ============================ orchestration ============================ */
+function refresh(){
+  const idx=filteredIdx();
+  const empty = idx.length===0;
+  document.getElementById('emptyState').style.display = empty? 'block':'none';
+  document.getElementById('chartGrid').style.display = empty? 'none':'grid';
+  renderKPIs(idx);
+  if(empty) return;
+  renderHeatmap(idx);
+  renderScatter(idx);
+  renderDual(idx);
+  renderHist(idx);
+  renderBar();
+  if(!state.selectedIds) renderDrill();
+  else renderDrill();
+}
+
+/* ============================ controls ============================ */
+function syncChips(){
+  document.querySelectorAll('#glassesChips .chip').forEach(c=>{
+    const g=+c.dataset.g; c.classList.toggle('on', state.glasses.has(g));
+  });
+}
+let debTimer=null;
+function debouncedRefresh(){ clearTimeout(debTimer); debTimer=setTimeout(()=>{ state.selectedIds=null; refresh(); },120); }
+
+const ageSlider=document.getElementById('ageSlider');
+noUiSlider.create(ageSlider,{start:[5,80],connect:true,step:1,range:{min:5,max:80},
+  tooltips:false, format:{to:v=>Math.round(v),from:v=>+v}});
+ageSlider.noUiSlider.on('update',(v)=>{ state.age=[+v[0],+v[1]]; document.getElementById('ageVal').textContent=v[0]+'–'+v[1]; });
+ageSlider.noUiSlider.on('change',debouncedRefresh);
+
+const screenSlider=document.getElementById('screenSlider');
+noUiSlider.create(screenSlider,{start:[0,16],connect:true,step:0.5,range:{min:0,max:16},
+  tooltips:false, format:{to:v=>(+v).toFixed(1).replace(/\.0$/,''),from:v=>+v}});
+screenSlider.noUiSlider.on('update',(v)=>{ state.screen=[+v[0],+v[1]]; document.getElementById('screenVal').textContent=v[0]+'–'+v[1]; });
+screenSlider.noUiSlider.on('change',debouncedRefresh);
+
+document.querySelectorAll('#glassesChips .chip').forEach(c=>{
+  c.addEventListener('click',()=>{
+    const g=+c.dataset.g;
+    if(state.glasses.has(g)) state.glasses.delete(g); else state.glasses.add(g);
+    if(state.glasses.size===0) state.glasses=new Set([0,1,2,3]); // never empty
+    syncChips(); state.selectedIds=null; refresh();
+  });
+});
+
+document.getElementById('clearSel').addEventListener('click',()=>{ state.selectedIds=null; renderDrill();
+  Plotly.restyle('scatter',{selectedpoints:[null]}); });
+
+document.getElementById('resetBtn').addEventListener('click',()=>{
+  state.age=[5,80]; state.screen=[0,16]; state.glasses=new Set([0,1,2,3]);
+  state.scatterX='screen_time_hours'; state.scatterY='eye_health_score'; state.selectedIds=null;
+  ageSlider.noUiSlider.set([5,80]); screenSlider.noUiSlider.set([0,16]); syncChips(); refresh();
+});
+
+/* boot */
+refresh();
+</script>
+</body>
+</html>
